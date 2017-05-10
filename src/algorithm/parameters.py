@@ -122,6 +122,11 @@ params = {
         # and should be used when you want to test new methods.
         'DEBUG': False,
 
+        # STATISTICS
+        # Defines the file containing the functions to keep track of the
+        # statistics regarding the evolution.
+        'STATISTICS': "stats.stats",
+
         # PRINTING
         # Use this to print out basic statistics for each generation to the
         # command line.

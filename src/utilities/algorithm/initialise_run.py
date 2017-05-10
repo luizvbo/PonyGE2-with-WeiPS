@@ -117,7 +117,8 @@ def set_param_imports():
                          'MUTATION', 'REPLACEMENT'],
            'utilities.fitness': ['ERROR_METRIC'],
            'fitness': ['FITNESS_FUNCTION'],
-           'algorithm': ['SEARCH_LOOP', 'STEP']}
+           'algorithm': ['SEARCH_LOOP', 'STEP'],
+           'stats': ['STATISTICS']}
 
     # We have to take 'algorithm' first as the functions from
     # algorithm need to be imported before any others to prevent
@@ -125,7 +126,8 @@ def set_param_imports():
     # 'fitness' because ERROR_METRIC has to be set in order to call
     # the fitness function constructor.
 
-    for special_ops in ['algorithm', 'utilities.fitness', 'operators', 'fitness']:
+    for special_ops in ['algorithm', 'utilities.fitness',
+                        'operators', 'fitness', 'stats']:
 
         if all([callable(params[op]) for op in ops[special_ops]]):
             # params are already functions
@@ -143,6 +145,14 @@ def set_param_imports():
                 # Set the fitness function in the params dictionary.
                 params['FITNESS_FUNCTION'] = eval(params['FITNESS_FUNCTION'] +
                                                   "()")
+            elif special_ops == "stats":
+                import_func = "from stats import " + params['STATISTICS']
+
+                # Import the required statistics module.
+                exec(import_func)
+
+                # Set the statistics module in the params dictionary
+                params['STATISTICS'] = eval(params['STATISTICS'])
             else:
                 # We need to do an appropriate import...
                 import_str = make_import_str([[op, params[op]] for op in
