@@ -23,7 +23,7 @@ def mane():
     individuals = params['SEARCH_LOOP']()
 
     # Print final review
-    get_stats(individuals, end=True)
+    params['STATISTICS'].get_stats(individuals, end=True)
 
     # Returns only needed if running experiment manager
     return params['TIME_STAMP'], trackers.best_ever.fitness
