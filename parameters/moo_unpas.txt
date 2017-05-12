@@ -1,0 +1,19 @@
+GRAMMAR_FILE:           moo_zdt1.bnf
+FITNESS_FUNCTION:       moo_zdt1
+CODON_SIZE:             1000
+POPULATION_SIZE:        100
+GENERATIONS:            250
+MUTATION_PROBABILITY:   0.01
+CROSSOVER_PROBABILITY:  0.8
+INITIALISATION:         uniform_tree
+SAVE_ALL:               True
+TOURNAMENT_SIZE:        2
+RANDOM_SEED:            0
+CROSSOVER:              operators.crossover.fixed_onepoint
+ELITE_SIZE:             0
+
+STATISTICS:             moo_stats
+STEP:                   algorithm.moo_step.weips_step
+SEARCH_LOOP:            algorithm.moo_search_loop.unpas_search_loop
+SELECTION:              operators.moo_selection.weips_selection
+SIGMA_SHARE:            0.48862
