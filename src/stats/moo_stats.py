@@ -6,12 +6,13 @@ from time import time
 import numpy as np
 from math import sqrt
 
+from numpy.core.memmap import memmap
+
 from algorithm.parameters import params
 from operators.moo_selection import first_pareto_front
 from stats.stats import stats
 from utilities.algorithm.state import create_state
 from utilities.stats import trackers
-from utilities.stats.save_plots import save_best_fitness_plot
 from utilities.stats.file_io import save_stats_to_file, save_stats_headers, \
     save_best_ind_to_file
 
@@ -151,39 +152,34 @@ def print_final_stats():
     :return: Nothing.
     """
 
-    if hasattr(params['FITNESS_FUNCTION'], "training_test"):
-        print("\n\nBest:\n  Training fitness:\t",
-              trackers.best_ever.training_fitness)
-        print("  Test fitness:\t\t", trackers.best_ever.test_fitness)
-    else:
-        print("\n\nBest:\n  Fitness:\t", trackers.best_ever.fitness)
+    print("\n\nBest:\n  Fitness:\t", trackers.best_ever.fitness)
+#    print("  Objectives:", trackers.best_ever.objectives)
     print("  Phenotype:", trackers.best_ever.phenotype)
     print("  Genome:", trackers.best_ever.genome)
     print_generation_stats()
 
 
-def d_metric(pf_solutions):
-    if not p_star:
-        initialise_p_star()
-    min_dist_sum = sum([min([euclidian_distance(ind.fitness, pareto_point)
-                             for ind in pf_solutions]) for pareto_point in p_star])
-    return float(min_dist_sum)/len(p_star)
+def uniform_distribution(pf_solutions):
+    niche_count = []
+    mean_nc = 0
+    for i in range(len(pf_solutions)):
+        nc = 0
+        for j in range(len(pf_solutions)):
+            if i != j:
+                if euclidean_distance(pf_solutions[i], pf_solutions[j]) < params['SIGMA_SHARE']:
+                    nc += 1
+        niche_count.append(nc)
+        mean_nc += nc
+    mean_nc /= float(len(pf_solutions))
+    s_nc = 0
+    for nc in niche_count:
+        s_nc += (nc - mean_nc) ** 2
+    s_nc = sqrt(s_nc/(len(pf_solutions) - 1))
+    return 1/(1+s_nc)
 
 
-def euclidian_distance(p1, p2):
-    return sqrt(sum([(x1 - x2)**2 for x1, x2 in zip(p1, p2)]))
-
-
-def initialise_p_star():
-    min_values = params['FITNESS_FUNCTION'].min_pareto_front()
-    max_values = params['FITNESS_FUNCTION'].max_pareto_front()
-
-    x = params['FITNESS_FUNCTION'].pareto_front_point([0, 1])
-
-    for e in range(params['FITNESS_FUNCTION'].p_star_size()):
-        rnd_point = [random.uniform(min_values[i], max_values[i])
-                     for i in range(len(min_values))]
-        p_star.append(params['FITNESS_FUNCTION'].pareto_front_point(rnd_point))
+def euclidean_distance(p1, p2):
+    return sqrt(sum([(x1 - x2)**2 for x1, x2 in zip(p1.fitness, p2.fitness)]))
 
 
 class ParetoFront:
@@ -194,9 +190,10 @@ class ParetoFront:
     """
     def __init__(self, pf_solutions):
         self.phenotype = PhenotypeParser(pf_solutions)
-        self.genome = GenomeParser(pf_solutions)
-        self.tree = TreeParser(pf_solutions)
-        self.fitness = d_metric(pf_solutions)
+        self.genome = ObjectiveParser(pf_solutions)
+        self.tree = "" #TreeParser(pf_solutions)
+        self.fitness = uniform_distribution(pf_solutions)
+#        self.objectives = ObjectiveParser(pf_solutions)
 
     def __lt__(self, other):
         if np.isnan(self.fitness):
@@ -229,3 +226,9 @@ class TreeParser(PhenotypeParser):
     def __str__(self):
         ret_str = ""
         return ''.join([str(ind.tree) + "\n" for ind in self.solutions])
+
+
+class ObjectiveParser(PhenotypeParser):
+    def __str__(self):
+        ret_str = ""
+        return ''.join([str(ind.fitness) + "\n" for ind in self.solutions])
