@@ -2,8 +2,6 @@ from __future__ import division
 
 from random import sample, random, randint
 
-import numpy
-
 from algorithm.parameters import params
 from collections import defaultdict
 
@@ -288,42 +286,6 @@ def weips_comparison_operator(individual, other_individual, weight_matrix=None):
     individual_f = sum([a * b for a, b in zip(individual.fitness, weights)])
     other_individual_f = sum([a * b for a, b in zip(other_individual.fitness, weights)])
     return individual_f < other_individual_f
-
-
-def rawps_weight_initialisation(individuals):
-    return None
-
-
-def unpas_weight_initialisation(individuals):
-    n_objectives = len(individuals[0].fitness)
-    n_rows = params['WEIPS_NUMBER_WEIGHTS']
-    return [[random.random() for e in range(n_objectives)] for e in n_rows]
-
-
-def meps_weight_initialisation(individuals):
-    n_objectives = len(individuals[0].fitness)
-    length = params['WEIPS_LENGTH']
-    n_rows = length**n_objectives
-    coordinates = numpy.linspace(0, 1, length)
-    coord_index = [0] * n_objectives
-    weight_matrix = []
-
-    for i in range(n_rows):
-        tmp_weigh = []
-        # Iterate through the coordinates
-        for j in range(n_objectives):
-            tmp_weigh.append(coordinates[coord_index[j]])
-        weight_matrix.append(tmp_weigh)
-        # Increment the index of the last coordinate
-        coord_index[n_objectives-1] += 1
-        # Check if we need to adjust the index of other coordinates
-        for j in range(n_objectives-1,0,-1):
-            if coord_index[j] >= len(coordinates):
-                coord_index[j] = 0
-                coord_index[j-1] += 1
-            else:
-                break
-    return weight_matrix
 
 
 def first_pareto_front(population):
