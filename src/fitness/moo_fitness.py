@@ -60,9 +60,6 @@ class MooFitness:
 
         return fitness
 
-    def get_best_individual(self, individuals):
-        return first_pareto_front(individuals)
-
     @abc.abstractmethod
     def moo_eval(self, phen):
         """
@@ -74,54 +71,8 @@ class MooFitness:
         """
         return
 
-    @staticmethod
-    @abc.abstractmethod
-    def min_pareto_front(self):
-        """
-        This method computes the minimum value of each objective in
-        the optimal Pareto front
-        
-        :return: A list with the minimum of each objective 
-        """
 
-    @staticmethod
-    @abc.abstractmethod
-    def max_pareto_front(self):
-        """
-        This method computes the maximum value of each objective in
-        the optimal Pareto front
-
-        :return: A list with the maximum of each objective 
-        """
-
-    @staticmethod
-    @abc.abstractmethod
-    def p_star_size(self):
-        """
-        Return the number of points used to compute the the distance from 
-        representatives in the Pareto front (D-metric) [Zhang2007] 
-
-        :return: The size of the set P_star 
-        
-        .. [Zhang2007] Zhang, Q. and Li, H., 2007. MOEA/D: A multiobjective 
-            evolutionary algorithm based on decomposition. IEEE Transactions 
-            on evolutionary computation, 11(6), pp.712-731.
-        """
-
-    @staticmethod
-    @abc.abstractmethod
-    def pareto_front_point(self, objectives):
-        """
-        Computes a point in the optimal Pareto front, according to the input
-        proble.
-        
-        :param objectives: The value of the objectives used to compute
-         the point.
-        :return: A point in the optimal Pareto front.
-        """
-
-
-def phenotype_binary_decoder(phen, n_codon, min_value, max_value):
+def binary_phen_to_float(phen, n_codon, min_value, max_value):
     """
     This method converts a phenotype, defined by a
     string of bits in a list of float values
@@ -149,7 +100,28 @@ def phenotype_binary_decoder(phen, n_codon, min_value, max_value):
     return chromosome
 
 
-def phenotype_decimal_decoder(phen, n_codon):
+def binary_phen_to_string(phen, n_codon):
+    """
+    This method converts a phenotype, defined by a
+    string of bits in a list of (string) bits.
+
+    :param phen: Phenotype defined by a bit string 
+    :param n_codon: List with the number of codons per gene, defined 
+    by the problem.
+    :return: A list os float values, representing the chromosome
+    """
+    i = 0
+    count = 0
+    chromosome = []
+    while i < len(phen):
+        gene = phen[i:(i + n_codon[count])]
+        chromosome.append(gene)
+        i = i + n_codon
+        count += 1
+    return chromosome
+
+
+def real_phen_to_float(phen, n_codon):
     """
     This method converts a phenotype, defined by a
     string of decimals with the same number of digits
