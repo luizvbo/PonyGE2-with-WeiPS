@@ -20,7 +20,7 @@ def search_loop():
     individuals = evaluate_fitness(individuals)
 
     # Generate statistics for run so far
-    get_stats(individuals)
+    params['STATISTICS'].get_stats(individuals)
 
     # Traditional GE
     for generation in range(1, (params['GENERATIONS']+1)):
