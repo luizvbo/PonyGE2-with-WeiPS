@@ -6,12 +6,12 @@ from fitness import moo_fitness
 from fitness.moo_fitness import binary_phen_to_float
 
 
-class moo_zdt1(moo_fitness.MooFitness):
+class moo_zdt2(moo_fitness.MooFitness):
     """
-    Fitness function for the first problem (T_1) presented in 
+    Fitness function for the first problem (T_1) presented in
     [Zitzler2000].
 
-    .. Zitzler, Eckart, Kalyanmoy Deb, and Lothar Thiele. Comparison 
+    .. Zitzler, Eckart, Kalyanmoy Deb, and Lothar Thiele. Comparison
     of multiobjective evolutionary algorithms: Empirical results.
     Evolutionary computation 8.2 (2000): 173-195.
     """
