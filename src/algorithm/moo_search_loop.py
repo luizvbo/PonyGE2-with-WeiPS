@@ -1,6 +1,7 @@
 import random
 
 import numpy
+from builtins import range
 
 from algorithm.moo_step import weips_step
 from algorithm.parameters import params
@@ -28,7 +29,14 @@ def rawps_weight_initialisation(individuals):
 def unpas_weight_initialisation(individuals):
     n_objectives = len(individuals[0].fitness)
     n_rows = params['WEIPS_NUMBER_WEIGHTS']
-    return [[random.random() for e in range(n_objectives)] for e in n_rows]
+    weight_matrix = []
+    for i in range(n_rows):
+        rnd_weight = [random.random() for e in range(n_objectives)]
+        sum_weights = sum(rnd_weight)
+        for e in range(n_objectives):
+            rnd_weight[e] /= sum_weights
+        weight_matrix.append(rnd_weight)
+    return weight_matrix
 
 
 def meps_weight_initialisation(individuals):
