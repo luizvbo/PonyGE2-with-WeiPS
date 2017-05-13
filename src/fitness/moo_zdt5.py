@@ -18,7 +18,8 @@ class moo_zdt5(moo_fitness.MooFitness):
 
     def moo_eval(self, phen):
         n_codon = [30]
-        chromosome = binary_phen_to_string(phen, n_codon.extend([5] * 10))
+        n_codon.extend([5] * 10)
+        chromosome = binary_phen_to_string(phen, n_codon)
 
         f1 = 1 + chromosome[0].count('1')
         g = 0

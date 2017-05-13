@@ -116,7 +116,7 @@ def binary_phen_to_string(phen, n_codon):
     while i < len(phen):
         gene = phen[i:(i + n_codon[count])]
         chromosome.append(gene)
-        i = i + n_codon
+        i = i + n_codon[count]
         count += 1
     return chromosome
 
