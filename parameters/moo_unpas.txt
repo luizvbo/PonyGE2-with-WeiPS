@@ -1,4 +1,4 @@
-GRAMMAR_FILE:           moo_zdt1.bnf
+GRAMMAR_FILE:           moo_zdt123.bnf
 FITNESS_FUNCTION:       moo_zdt1
 CODON_SIZE:             1000
 POPULATION_SIZE:        100
@@ -16,4 +16,5 @@ STATISTICS:             moo_stats
 STEP:                   algorithm.moo_step.weips_step
 SEARCH_LOOP:            algorithm.moo_search_loop.unpas_search_loop
 SELECTION:              operators.moo_selection.weips_selection
+WEIPS_NUMBER_WEIGHTS:   100
 SIGMA_SHARE:            0.48862

@@ -1,4 +1,4 @@
-GRAMMAR_FILE:           moo_zdt1.bnf
+GRAMMAR_FILE:           moo_zdt123.bnf
 FITNESS_FUNCTION:       moo_zdt1
 CODON_SIZE:             1000
 POPULATION_SIZE:        100
