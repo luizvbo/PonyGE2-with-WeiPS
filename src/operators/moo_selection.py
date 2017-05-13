@@ -279,7 +279,10 @@ def weips_comparison_operator(individual, other_individual, weight_matrix=None):
     # If the matrix of weights do not exist, the weights are sampled uniformly
     if weight_matrix is None:
         weights = [random() for i in range(n_objectives)]
-    # Otherwise, a set of weights is selected uniformly from the matrix
+        sum_weights = sum(weights)
+        for e in range(n_objectives):
+            weights[e] /= sum_weights
+    # Otherwise, a set of weights is selected randomly from the matrix
     else:
         weights = weight_matrix[randint(0, len(weight_matrix) - 1)]
     # Compute the fitness induced by the weights for each individual
