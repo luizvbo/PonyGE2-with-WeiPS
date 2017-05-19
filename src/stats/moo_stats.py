@@ -36,9 +36,9 @@ def get_stats(individuals, end=False):
     non_dominated, dominated = first_pareto_front(individuals)
     pf_pop = ParetoFront(non_dominated)
 
-    if not trackers.best_ever or pf_pop > trackers.best_ever:
-        # Save best individual in trackers.best_ever.
-        trackers.best_ever = pf_pop
+    # if not trackers.best_ever or pf_pop > trackers.best_ever:
+    # Save best individual in trackers.best_ever.
+    trackers.best_ever = pf_pop
 
     if end or params['VERBOSE'] or not params['DEBUG']:
         # Update all stats.
@@ -53,6 +53,16 @@ def get_stats(individuals, end=False):
         perc = stats['gen'] / (params['GENERATIONS'] + 1) * 100
         stdout.write("Evolution: %d%% complete\r" % perc)
         stdout.flush()
+
+    # Generate test fitness on regression problems
+    if hasattr(params['FITNESS_FUNCTION'], "training_test") and end:
+        trackers.best_ever.training_fitness = copy(trackers.best_ever.fitness)
+        test_pf = []
+        for ind in trackers.best_ever.pf_solutions:
+            test_pf.append(params['FITNESS_FUNCTION'](ind, dist='test'))
+        trackers.best_ever.test_fitness = TestFitness(test_pf)
+        # params['FITNESS_FUNCTION'](trackers.best_ever, dist='test')
+        trackers.best_ever.fitness = trackers.best_ever.training_fitness
 
     # Save stats to list.
     if params['VERBOSE'] or (not params['DEBUG'] and not end):
@@ -127,8 +137,14 @@ def update_stats(individuals, end):
     stats['min_tree_nodes'] = np.nanmin(nodes)
 
     # Fitness Stats
-    fitnesses = [i.fitness for i in individuals]
-    stats['ave_fitness'] = np.nanmean(fitnesses)
+    ave_fitness = [list() for i in range(params['FITNESS_FUNCTION'].num_objectives())]
+    for i in individuals:
+        if isinstance(i.fitness, list):
+            for j in range(len(ave_fitness)):
+                ave_fitness[j].append(i.fitness[j])
+    # fitnesses = [i.fitness for i in individuals]
+    stats['ave_fitness'] = [np.nanmean(i) for i in ave_fitness]
+        # np.nanmean(fitnesses)
     stats['best_fitness'] = trackers.best_ever.fitness
 
 
@@ -151,9 +167,15 @@ def print_final_stats():
 
     :return: Nothing.
     """
+    if hasattr(params['FITNESS_FUNCTION'], "training_test"):
+        print("\n\nBest:\n  Training fitness:\t",
+              trackers.best_ever.training_fitness)
+        print("  Test fitness:\t\t", trackers.best_ever.test_fitness)
+    else:
+        print("\n\nBest:\n  Fitness:\t", trackers.best_ever.fitness)
 
-    print("\n\nBest:\n  Fitness:\t", trackers.best_ever.fitness)
-#    print("  Objectives:", trackers.best_ever.objectives)
+    # print("\n\nBest:\n  Fitness:\t", trackers.best_ever.fitness)
+    # print("  Objectives:", trackers.best_ever.objectives)
     print("  Phenotype:", trackers.best_ever.phenotype)
     print("  Genome:", trackers.best_ever.genome)
     print_generation_stats()
@@ -166,7 +188,8 @@ def uniform_distribution(pf_solutions):
         nc = 0
         for j in range(len(pf_solutions)):
             if i != j:
-                if euclidean_distance(pf_solutions[i], pf_solutions[j]) < params['SIGMA_SHARE']:
+                if euclidean_distance(pf_solutions[i].fitness,
+                                      pf_solutions[j].fitness) < params['SIGMA_SHARE']:
                     nc += 1
         niche_count.append(nc)
         mean_nc += nc
@@ -179,32 +202,43 @@ def uniform_distribution(pf_solutions):
 
 
 def euclidean_distance(p1, p2):
-    return sqrt(sum([(x1 - x2)**2 for x1, x2 in zip(p1.fitness, p2.fitness)]))
+    return sqrt(sum([(x1 - x2)**2 for x1, x2 in zip(p1, p2)]))
+
+
+class TestFitness:
+    def __init__(self, fitness_list):
+        self.fitness_list = fitness_list
+
+    def __str__(self):
+        return ''.join([str(fitness) + "\n" for fitness in self.fitness_list])
 
 
 class ParetoFront:
     """
     This class makes a set of solutions in the Pareto front emulate
-    an inidividual, such that the writing of the statistics in file
-    can read the informations from the Pareto front as an individual.
+    an individual, such that the writing of the statistics in file
+    can read the information from the Pareto front as an individual.
     """
     def __init__(self, pf_solutions):
         self.phenotype = PhenotypeParser(pf_solutions)
-        self.genome = ObjectiveParser(pf_solutions)
-        self.tree = "" #TreeParser(pf_solutions)
-        self.fitness = uniform_distribution(pf_solutions)
-#        self.objectives = ObjectiveParser(pf_solutions)
+        self.genome = GenomeParser(pf_solutions)
+        self.tree = TreeParser(pf_solutions)
+        self.fitness = ObjectiveParser(pf_solutions)
+        self.pf_solutions = pf_solutions
+        # uniform_distribution(pf_solutions)
+        # self.objectives = ObjectiveParser(pf_solutions)
 
     def __lt__(self, other):
-        if np.isnan(self.fitness):
-            # Self.fitness is not a number, return False as it doesn't
+
+        if self.fitness is None:
+            # Self.fitness is None, return False as it doesn't
             # matter what the other fitness is.
             return False
         else:
-            if np.isnan(other.fitness):
+            if other.fitness is None:
                 return False
             else:
-                return other.fitness < self.fitness
+                return len(other.fitness) > len(self.fitness)
 
 
 class PhenotypeParser:
