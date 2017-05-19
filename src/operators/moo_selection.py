@@ -1,5 +1,6 @@
 from __future__ import division
 
+from math import isnan
 from random import sample, random, randint
 
 from algorithm.parameters import params
@@ -33,17 +34,23 @@ def nsga2_selection(population):
     # Initialise list of tournament winners.
     winners = []
 
-    pareto = compute_pareto_metrics(population)
+    # The flag "INVALID_SELECTION" allows for selection of invalid individuals.
+    if params['INVALID_SELECTION']:
+        available = population
+    else:
+        available = [i for i in population if not i.invalid]
+
+    pareto = compute_pareto_metrics(available)
 
     while len(winners) < selection_size:
         # Return the single best competitor.
-        winners.append(pareto_tournament(population, pareto, tournament_size))
+        winners.append(pareto_tournament(available, pareto, tournament_size))
 
     return winners
 
 
 def compute_pareto_metrics(population):
-    pareto = sort_nondominated(population)
+    pareto = sort_non_dominated(population)
     calculate_crowding_distance(pareto)
     return pareto
 
@@ -70,13 +77,13 @@ def pareto_tournament(population, pareto, tournament_size):
 def crowded_comparison_operator(individual, other_individual, pareto):
     if (pareto.rank[individual] < pareto.rank[other_individual]) or \
             (pareto.rank[individual] == pareto.rank[other_individual] and
-                pareto.crowding_distance[individual] > pareto.crowding_distance[other_individual]):
+                     pareto.crowding_distance[individual] > pareto.crowding_distance[other_individual]):
         return True
     else:
         return False
 
 
-def sort_nondominated(population):
+def sort_non_dominated(population):
     """Sort the first *k* *population* into different nondomination levels 
     using the "Fast Nondominated Sorting Approach" proposed by Deb et al.,
     see [Deb2002]_. This algorithm has a time complexity of :math:`O(MN^2)`, 
@@ -94,14 +101,17 @@ def sort_nondominated(population):
        
     """
     pareto = ParetoInfo(population)
+    max_fitness = [float('-inf')] * pareto.n_objectives
+    min_fitness = [float('inf')] * pareto.n_objectives
     # The naming *p* and *q* is the same adopted in [Deb2002]_
     for p in population:
         # Compute the minimum and maximum fitness values in the population
-        for i in range(pareto.n_objectives):
-            if p.fitness[i] < pareto.min_fitness[i]:
-                pareto.min_fitness[i] = p.fitness[i]
-            if p.fitness[i] > pareto.max_fitness[i]:
-                pareto.max_fitness[i] = p.fitness[i]
+        if isinstance(p.fitness, list):
+            for i in range(pareto.n_objectives):
+                if p.fitness[i] < min_fitness[i]:
+                    min_fitness[i] = p.fitness[i]
+                if p.fitness[i] > max_fitness[i]:
+                    max_fitness[i] = p.fitness[i]
         # Compute the domination counter of p
         for q in population:
             if dominates(p, q):
@@ -114,6 +124,7 @@ def sort_nondominated(population):
         if pareto.get_domination_count(p) == 0:
             pareto.fronts[0].append(p)
             pareto.rank[p] = 0
+    pareto.compute_delta_fitness(min_fitness, max_fitness)
     # Initialize the front counter
     i = 0
     while len(pareto.fronts[i]) > 0:
@@ -135,10 +146,15 @@ def dominates(individual1, individual2):
 
     :param individual1: The individual that would be dominated.
     :param individual2: The individual dominant.
-    :returns: :obj:`True` if indvidual_2 dominates indvidual_1, :obj:`False`
+    :returns: :obj:`True` if indvidual_1 dominates indvidual_2, :obj:`False`
               otherwise.
     """
     not_equal = False
+
+    if not isinstance(individual1.fitness, list):
+        return False
+    if not isinstance(individual2.fitness, list):
+        return True
     for ind1_value, ind2_value in zip(individual1.fitness, individual2.fitness):
         if ind1_value > ind2_value:
             return False
@@ -163,14 +179,21 @@ def calculate_crowding_distance(pareto):
                 pareto.crowding_distance[individual] = 0
 
             for m in range(pareto.n_objectives):  # len(front[0].fitness)):
-                front = sorted(front, key=lambda item: item.fitness[m])
+                front = sorted(front, key=lambda item: params['FITNESS_FUNCTION'].value(item.fitness, m))
+                                                # if isinstance(item.fitness, list)
+                                                # else item.fitness)
                 pareto.crowding_distance[front[0]] = float("inf")
                 pareto.crowding_distance[front[solutions_num - 1]] = float("inf")
-                for index, value in enumerate(front[1:solutions_num - 1]):
-                    pareto.crowding_distance[front[index]] = \
-                        (pareto.get_crowding_distance(front[index + 1]) -
-                         pareto.get_crowding_distance(front[index - 1])) / \
-                        (pareto.max_fitness[m] - pareto.min_fitness[m])
+                for index in range(1, solutions_num - 1):
+                    # print(pareto.crowding_distance[front[index]], end=" ")
+                    # print(params['FITNESS_FUNCTION'].value(front[index + 1].fitness, m), end=" ")
+                    # print(params['FITNESS_FUNCTION'].value(front[index - 1].fitness, m), end=" ")
+                    # x = (params['FITNESS_FUNCTION'].value(front[index + 1].fitness, m) -
+                    #      params['FITNESS_FUNCTION'].value(front[index - 1].fitness, m))
+                    # print(x, end="\n")
+                    pareto.crowding_distance[front[index]] += \
+                        (params['FITNESS_FUNCTION'].value(front[index + 1].fitness, m) -
+                         params['FITNESS_FUNCTION'].value(front[index - 1].fitness, m)) / pareto.delta_fitness[m]
 
 
 class ParetoInfo:
@@ -183,9 +206,11 @@ class ParetoInfo:
 
         self.dominated_solutions = defaultdict(list)
 
-        self.n_objectives = len(population[0].fitness)
-        self.min_fitness = [float('inf')] * self.n_objectives
-        self.max_fitness = [float('-inf')] * self.n_objectives
+        self.n_objectives = params['FITNESS_FUNCTION'].num_objectives()
+        self.delta_fitness = [0] * self.n_objectives
+
+    def compute_delta_fitness(self, min_fitness, max_fitness):
+        self.delta_fitness = [max_fitness[i] - min_fitness[i] for i in range(self.n_objectives)]
 
     def update_domination_count(self, individual, should_increment=True):
         """
@@ -248,9 +273,15 @@ def weips_selection(population, weight_matrix, selection_size):
     # Initialise list of tournament winners.
     winners = []
 
+    # The flag "INVALID_SELECTION" allows for selection of invalid individuals.
+    if params['INVALID_SELECTION']:
+        available = population
+    else:
+        available = [i for i in population if not i.invalid]
+
     while len(winners) < selection_size:
         # Return the single best competitor.
-        winners.append(weips_tournament(population, weight_matrix, tournament_size))
+        winners.append(weips_tournament(available, weight_matrix, tournament_size))
 
     return winners
 
@@ -275,6 +306,10 @@ def weips_tournament(population, weight_matrix, tournament_size):
 
 
 def weips_comparison_operator(individual, other_individual, weight_matrix=None):
+    if not isinstance(individual.fitness, list):
+        return False
+    if not isinstance(other_individual.fitness, list):
+        return True
     n_objectives = len(individual.fitness)
     # If the matrix of weights do not exist, the weights are sampled uniformly
     if weight_matrix is None:
@@ -292,19 +327,18 @@ def weips_comparison_operator(individual, other_individual, weight_matrix=None):
 
 
 def first_pareto_front(population):
-    nondominated_pop = []
+    non_dominated_pop = []
     dominated_pop = []
 
-    i = 0
-    while i < len(population):
-        nondominated = True
-        for individual in population[i + 1:]:
-            if dominates(individual, population[i]):
-                nondominated = False
+    for i in range(len(population)):
+        non_dominated = True
+        for j in range(len(population)):
+            if dominates(population[j], population[i]):
+                non_dominated = False
                 break
-        if nondominated:
-            nondominated_pop.append(population[i])
+        if non_dominated:
+            non_dominated_pop.append(population[i])
         else:
             dominated_pop.append(population[i])
         i += 1
-    return nondominated_pop, dominated_pop
+    return non_dominated_pop, dominated_pop
