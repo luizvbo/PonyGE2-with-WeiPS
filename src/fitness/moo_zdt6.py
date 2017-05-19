@@ -32,3 +32,6 @@ class moo_zdt6(moo_fitness.MooFitness):
         # Two objectives list
         objectives = [f1, (g * h)]
         return objectives
+
+    def num_objectives(self):
+        return 2

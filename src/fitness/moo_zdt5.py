@@ -23,7 +23,7 @@ class moo_zdt5(moo_fitness.MooFitness):
 
         f1 = 1 + chromosome[0].count('1')
         g = 0
-        for i in range(1, len(real_chromosome)):
+        for i in range(1, len(chromosome)):
             u = chromosome[i].count('1')
             if u < 5:
                 g += 2 + u
@@ -38,3 +38,6 @@ class moo_zdt5(moo_fitness.MooFitness):
     @staticmethod
     def v(self, x):
         return x.count('1')
+
+    def num_objectives(self):
+        return 2

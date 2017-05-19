@@ -33,3 +33,6 @@ class moo_zdt4(moo_fitness.MooFitness):
         # Two objectives list
         objectives = [real_chromosome[0], (g * h)]
         return objectives
+
+    def num_objectives(self):
+        return 2
