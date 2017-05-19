@@ -22,6 +22,10 @@ def meps_search_loop():
     return weips_search_loop(meps_weight_initialisation)
 
 
+def stratmeps_search_loop():
+    return weips_search_loop(stratmeps_weight_initialisation)
+
+
 def rawps_weight_initialisation(individuals):
     return None
 
@@ -73,6 +77,17 @@ def meps_weight_initialisation(individuals):
                 break
         # The index of the last coordinate is simetric to the last but one
         current_index[n_objectives - 1] = max_index[n_objectives - 2] - current_index[n_objectives - 2]
+    return weight_matrix
+
+
+def stratmeps_weight_initialisation(individuals):
+    weight_matrix = meps_weight_initialisation(individuals)
+    n_objectives = params['FITNESS_FUNCTION'].num_objectives()
+    for i in range(len(weight_matrix)):
+        weight_matrix[i] = [random.random() * weight_matrix[i][j] for j in range(n_objectives)]
+        sum_weights = sum(weight_matrix[i])
+        for j in range(n_objectives):
+            weight_matrix[i][j] = weight_matrix[i][j]/sum_weights
     return weight_matrix
 
 
