@@ -62,12 +62,12 @@ def weips_replacement(new_pop, old_pop, weight_matrix):
     # Size of the new population
     pop_size = params['POPULATION_SIZE']
 
-    nondominated_pop, dominated_pop = first_pareto_front(new_pop)
+    non_dominated_pop, dominated_pop = first_pareto_front(new_pop)
 
-    if len(nondominated_pop) < pop_size:
-        nondominated_pop.extend(
+    if len(non_dominated_pop) < pop_size:
+        non_dominated_pop.extend(
             weips_selection(dominated_pop,
-                            weight_matrix, pop_size - len(nondominated_pop)))
-    elif len(nondominated_pop) > pop_size:
-        nondominated_pop = sample(nondominated_pop, pop_size)
-    return nondominated_pop
+                            weight_matrix, pop_size - len(non_dominated_pop)))
+    elif len(non_dominated_pop) > pop_size:
+        non_dominated_pop = sample(non_dominated_pop, pop_size)
+    return non_dominated_pop
