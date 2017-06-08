@@ -1,12 +1,9 @@
-import random
 from copy import copy
 from sys import stdout
 from time import time
 
 import numpy as np
 from math import sqrt
-
-from numpy.core.memmap import memmap
 
 from algorithm.parameters import params
 from operators.moo_selection import first_pareto_front
