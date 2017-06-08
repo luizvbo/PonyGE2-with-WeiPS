@@ -119,8 +119,6 @@ def weips_search_loop(weight_init_method):
 
         # New generation
         individuals = weips_step(individuals, weight_matrix)
-    for i in individuals:
-        print(str(i.fitness[0])+","+str(i.fitness[1]), end=",")
 
     return individuals
 

@@ -66,8 +66,8 @@ def weips_replacement(new_pop, old_pop, weight_matrix):
 
     if len(non_dominated_pop) < pop_size:
         non_dominated_pop.extend(
-            weips_selection(dominated_pop,
-                            weight_matrix, pop_size - len(non_dominated_pop)))
+            weips_selection(dominated_pop, weight_matrix,
+                            pop_size - len(non_dominated_pop)))
     elif len(non_dominated_pop) > pop_size:
         non_dominated_pop = sample(non_dominated_pop, pop_size)
     return non_dominated_pop
