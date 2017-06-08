@@ -5,11 +5,12 @@ from random import sample, random, randint
 
 from algorithm.parameters import params
 from collections import defaultdict
-
+from utilities.fitness.math_functions import percentile
 
 ######################################
 # Non-Dominated Sorting   (NSGA-II)  #
 ######################################
+
 
 def nsga2_selection(population):
     """Apply NSGA-II selection operator on the *population*. Usually, the
@@ -77,7 +78,7 @@ def pareto_tournament(population, pareto, tournament_size):
 def crowded_comparison_operator(individual, other_individual, pareto):
     if (pareto.rank[individual] < pareto.rank[other_individual]) or \
             (pareto.rank[individual] == pareto.rank[other_individual] and
-                     pareto.crowding_distance[individual] > pareto.crowding_distance[other_individual]):
+             pareto.crowding_distance[individual] > pareto.crowding_distance[other_individual]):
         return True
     else:
         return False
@@ -101,17 +102,24 @@ def sort_non_dominated(population):
        
     """
     pareto = ParetoInfo(population)
-    max_fitness = [float('-inf')] * pareto.n_objectives
-    min_fitness = [float('inf')] * pareto.n_objectives
+
+    # max_fitness = [float('-inf')] * pareto.n_objectives
+    # min_fitness = [float('inf')] * pareto.n_objectives
+
+    # Compute the IQR+1 value used to normalize the crowding distance
+    pareto.compute_iqr(population)
+
     # The naming *p* and *q* is the same adopted in [Deb2002]_
     for p in population:
+
         # Compute the minimum and maximum fitness values in the population
-        if isinstance(p.fitness, list):
-            for i in range(pareto.n_objectives):
-                if p.fitness[i] < min_fitness[i]:
-                    min_fitness[i] = p.fitness[i]
-                if p.fitness[i] > max_fitness[i]:
-                    max_fitness[i] = p.fitness[i]
+        # if isinstance(p.fitness, list):
+        #     for i in range(pareto.n_objectives):
+        #         if p.fitness[i] < min_fitness[i]:
+        #             min_fitness[i] = p.fitness[i]
+        #         if p.fitness[i] > max_fitness[i]:
+        #             max_fitness[i] = p.fitness[i]
+
         # Compute the domination counter of p
         for q in population:
             if dominates(p, q):
@@ -124,7 +132,9 @@ def sort_non_dominated(population):
         if pareto.get_domination_count(p) == 0:
             pareto.fronts[0].append(p)
             pareto.rank[p] = 0
-    pareto.compute_delta_fitness(min_fitness, max_fitness)
+
+    # pareto.compute_delta_fitness(min_fitness, max_fitness)
+
     # Initialize the front counter
     i = 0
     while len(pareto.fronts[i]) > 0:
@@ -171,6 +181,7 @@ def calculate_crowding_distance(pareto):
     
     :param pareto: 
     """
+
     for front in pareto.fronts:
         if len(front) > 0:
             solutions_num = len(front)
@@ -180,8 +191,6 @@ def calculate_crowding_distance(pareto):
 
             for m in range(pareto.n_objectives):  # len(front[0].fitness)):
                 front = sorted(front, key=lambda item: params['FITNESS_FUNCTION'].value(item.fitness, m))
-                                                # if isinstance(item.fitness, list)
-                                                # else item.fitness)
                 pareto.crowding_distance[front[0]] = float("inf")
                 pareto.crowding_distance[front[solutions_num - 1]] = float("inf")
                 for index in range(1, solutions_num - 1):
@@ -193,7 +202,7 @@ def calculate_crowding_distance(pareto):
                     # print(x, end="\n")
                     pareto.crowding_distance[front[index]] += \
                         (params['FITNESS_FUNCTION'].value(front[index + 1].fitness, m) -
-                         params['FITNESS_FUNCTION'].value(front[index - 1].fitness, m)) / pareto.delta_fitness[m]
+                         params['FITNESS_FUNCTION'].value(front[index - 1].fitness, m)) / pareto.fitness_iqr[m]
 
 
 class ParetoInfo:
@@ -207,10 +216,16 @@ class ParetoInfo:
         self.dominated_solutions = defaultdict(list)
 
         self.n_objectives = params['FITNESS_FUNCTION'].num_objectives()
-        self.delta_fitness = [0] * self.n_objectives
+        self.fitness_iqr = [0] * self.n_objectives
 
-    def compute_delta_fitness(self, min_fitness, max_fitness):
-        self.delta_fitness = [max_fitness[i] - min_fitness[i] for i in range(self.n_objectives)]
+    # def compute_delta_fitness(self, min_fitness, max_fitness):
+    #     self.delta_fitness = [max_fitness[i] - min_fitness[i] for i in range(self.n_objectives)]
+
+    def compute_iqr(self, population):
+        self.fitness_iqr = get_population_iqr(population, self.n_objectives)
+        # If the IQR value is zero, we replace it for 1---which is equivalent to disregard
+        # the normalization process for that objective dimension
+        self.fitness_iqr = [1 if i == 0 else i for i in self.fitness_iqr]
 
     def update_domination_count(self, individual, should_increment=True):
         """
@@ -296,20 +311,38 @@ def weips_tournament(population, weight_matrix, tournament_size):
     :param tournament_size: The size of the tournament.
     :return: The selected individuals.
     """
+    pop_iqr = get_population_iqr(population, params['FITNESS_FUNCTION'].num_objectives())
+    # If the IQR value is zero, we replace it for 1---which is equivalent to disregard
+    # the normalization process for that objective dimension
+    pop_iqr = [1 if i == 0 else i for i in pop_iqr]
+
     participants = sample(population, tournament_size)
+
     best = None
     for participant in participants:
-        if best is None or weips_comparison_operator(participant, best, weight_matrix):
+        if best is None or weips_comparison_operator(participant, best, pop_iqr, weight_matrix):
             best = participant
 
     return best
 
 
-def weips_comparison_operator(individual, other_individual, weight_matrix=None):
+def weips_comparison_operator(individual, other_individual, population_iqr, weight_matrix=None):
+    """
+    Compare two individuals according to the WeiPS method. The objectives are aggregated by a weighted sum. 
+    The weights are normalized using the IQR of the objectives defined over the population.
+    :param individual: The reference individual
+    :param other_individual: The second individual to be compared
+    :param population_iqr: The IQR of the population used to normalize the weights
+    :param weight_matrix: The weight matrix used to compute the fitness
+    :return: *True* if the aggregated fitness of the first individual is smaller than the aggregated fitness of 
+    the second individual and *False* otherwise. 
+    """
+    # Check for invalid individuals (with nan fitness)
     if not isinstance(individual.fitness, list):
         return False
     if not isinstance(other_individual.fitness, list):
         return True
+
     n_objectives = len(individual.fitness)
     # If the matrix of weights do not exist, the weights are sampled uniformly
     if weight_matrix is None:
@@ -320,6 +353,8 @@ def weips_comparison_operator(individual, other_individual, weight_matrix=None):
     # Otherwise, a set of weights is selected randomly from the matrix
     else:
         weights = weight_matrix[randint(0, len(weight_matrix) - 1)]
+    # Normalize the weights according to the IQR of the objectives
+    weights = sum([a / b for a, b in zip(weights, population_iqr)])
     # Compute the fitness induced by the weights for each individual
     individual_f = sum([a * b for a, b in zip(individual.fitness, weights)])
     other_individual_f = sum([a * b for a, b in zip(other_individual.fitness, weights)])
@@ -333,7 +368,7 @@ def first_pareto_front(population):
     for i in range(len(population)):
         non_dominated = True
         for j in range(len(population)):
-            if dominates(population[j], population[i]):
+            if i != j and dominates(population[j], population[i]):
                 non_dominated = False
                 break
         if non_dominated:
@@ -342,3 +377,19 @@ def first_pareto_front(population):
             dominated_pop.append(population[i])
         i += 1
     return non_dominated_pop, dominated_pop
+
+
+def get_population_iqr(population, n_objectives):
+    """
+    Compute the interquartile range (IQR) of the population regarding
+    each objective. 
+    :param population: The input population 
+    :param n_objectives: Total number of objectives
+    :return: List with the IQR regarding each objective 
+    """
+    iqr = [0] * n_objectives
+    for m in range(n_objectives):
+        sorted_pop = sorted(population, key=lambda ind: params['FITNESS_FUNCTION'].value(ind.fitness, m))
+        iqr[m] = (params['FITNESS_FUNCTION'].value(percentile(sorted_pop, 75).fitness, m) -
+                  params['FITNESS_FUNCTION'].value(percentile(sorted_pop, 25).fitness, m))
+    return iqr
