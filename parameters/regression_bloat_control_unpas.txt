@@ -18,6 +18,7 @@ REPLACEMENT:            generational
 TOURNAMENT_SIZE:        2
 VERBOSE:                False
 SAVE_ALL:               True
+ELITE_SIZE:             0
 
 FITNESS_FUNCTION:       regression_bloat_control
 STATISTICS:             moo_stats
