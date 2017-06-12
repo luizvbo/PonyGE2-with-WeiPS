@@ -9,40 +9,6 @@ from fitness.evaluation import evaluate_fitness
 from algorithm.parameters import params
 
 
-def nsga2_step(individuals):
-    """
-    Runs a single generation of the evolutionary algorithm process:
-        Selection
-        Variation
-        Evaluation
-        Replacement
-
-    :param individuals: The current generation, upon which a single
-    evolutionary generation will be imposed (P_t).
-    :return: The next generation of the population.
-    """
-
-    # Select parents from the original population.
-    parents = selection(individuals)
-
-    # Crossover parents and add to the new population.
-    cross_pop = crossover(parents)
-
-    # Mutate the new population.
-    new_pop = mutation(cross_pop)
-
-    # Evaluate the fitness of the new population (Q_t).
-    new_pop = evaluate_fitness(new_pop)
-
-    # Replace the old population with the new population.
-    individuals = nsga2_replacement(new_pop, individuals)
-
-    # Generate statistics for run so far
-    params['STATISTICS'].get_stats(individuals)
-
-    return individuals
-
-
 def weips_step(individuals, weight_matrix):
     """
     Runs a single generation of the evolutionary algorithm process:
