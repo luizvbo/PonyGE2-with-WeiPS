@@ -222,8 +222,6 @@ class ParetoFront:
         self.tree = TreeParser(pf_solutions)
         self.fitness = ObjectiveParser(pf_solutions)
         self.pf_solutions = pf_solutions
-        # uniform_distribution(pf_solutions)
-        # self.objectives = ObjectiveParser(pf_solutions)
 
     def __lt__(self, other):
 
@@ -243,23 +241,25 @@ class PhenotypeParser:
         self.solutions = pf_solutions
 
     def __str__(self):
-        ret_str = ""
-        return ''.join([str(ind.phenotype)+"\n" for ind in self.solutions])
+        ret_str = ''.join([str(ind.phenotype)+"\n" for ind in self.solutions])
+        return ret_str
 
 
 class GenomeParser(PhenotypeParser):
     def __str__(self):
+        # ret_str = ''.join([str(ind.genome)+"\n" for ind in self.solutions])
         ret_str = ""
-        return ''.join([str(ind.genome)+"\n" for ind in self.solutions])
+        return ret_str
 
 
 class TreeParser(PhenotypeParser):
     def __str__(self):
+        # ret_str = ''.join([str(ind.tree) + "\n" for ind in self.solutions])
         ret_str = ""
-        return ''.join([str(ind.tree) + "\n" for ind in self.solutions])
+        return ret_str
 
 
 class ObjectiveParser(PhenotypeParser):
     def __str__(self):
-        ret_str = ""
-        return ''.join([str(ind.fitness) + "\n" for ind in self.solutions])
+        ret_str = ''.join([str(ind.fitness) + "\n" for ind in self.solutions])
+        return ret_str
