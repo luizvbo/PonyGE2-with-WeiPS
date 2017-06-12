@@ -1,3 +1,4 @@
+from algorithm.parameters import params
 from fitness.evaluation import evaluate_fitness
 from operators.crossover import crossover
 from operators.mutation import mutation
@@ -35,7 +36,7 @@ def step(individuals):
     individuals = replacement(new_pop, individuals)
 
     # Generate statistics for run so far
-    get_stats(individuals)
+    params['STATISTICS'].get_stats(individuals)
     
     return individuals
 
