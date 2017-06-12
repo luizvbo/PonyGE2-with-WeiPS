@@ -354,7 +354,7 @@ def weips_comparison_operator(individual, other_individual, population_iqr, weig
     else:
         weights = weight_matrix[randint(0, len(weight_matrix) - 1)]
     # Normalize the weights according to the IQR of the objectives
-    weights = sum([a / b for a, b in zip(weights, population_iqr)])
+    weights = [a / b for a, b in zip(weights, population_iqr)]
     # Compute the fitness induced by the weights for each individual
     individual_f = sum([a * b for a, b in zip(individual.fitness, weights)])
     other_individual_f = sum([a * b for a, b in zip(other_individual.fitness, weights)])
