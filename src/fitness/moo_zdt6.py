@@ -28,7 +28,7 @@ class moo_zdt6(moo_fitness.MooFitness):
             summation += chromosome[i]
 
         g = 1 + 9 * (summation / (len(chromosome)-1)) ** 0.25
-        h = 1 - (f1 / g)
+        h = 1 - (f1 / g) ** 2
         # Two objectives list
         objectives = [f1, (g * h)]
         return objectives
