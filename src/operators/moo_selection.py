@@ -274,13 +274,14 @@ class ParetoInfo:
 #######################################
 
 
-def weips_selection(population, weight_matrix, selection_size):
+def weips_selection(population, weight_matrix, selection_size, replacement=True):
     """
     Explain the Weighted Pareto Selection (WeiPS) method here
 
     :param population: A population from which to select individuals.
     :param weight_matrix: Weights used during the selection.
-    :param selection_size: 
+    :param selection_size: Number of individuals to be selected
+    :param replacement: If False, individuals are selected without replacement
     :returns: A list of selected individuals. 
     """
     tournament_size = params['TOURNAMENT_SIZE']
@@ -294,28 +295,34 @@ def weips_selection(population, weight_matrix, selection_size):
     else:
         available = [i for i in population if not i.invalid]
 
+    pop_iqr = get_population_iqr(available, params['FITNESS_FUNCTION'].num_objectives())
+    # If the IQR value is zero, we replace it for 1---which is equivalent to disregard
+    # the normalization process for that objective dimension
+    pop_iqr = [1 if i == 0 else i for i in pop_iqr]
+
     while len(winners) < selection_size:
         # Return the single best competitor.
-        winners.append(weips_tournament(available, weight_matrix, tournament_size))
+        winner = weips_tournament(available, pop_iqr, weight_matrix, tournament_size)
+        if not replacement:
+            # If the selection is performed without replacement, the individual is
+            # removed from the set
+            available.remove(winner)
+        winners.append(winner)
 
     return winners
 
 
-def weips_tournament(population, weight_matrix, tournament_size):
+def weips_tournament(population, pop_iqr, weight_matrix, tournament_size):
     """
     The Pareto tournament selection uses both the pareto front of the individual 
     and the crowding distance.
 
     :param population: A population from which to select individuals.
+    :param pop_iqr: The IQR of the population used to normalize the weights
     :param weight_matrix: The matrix of weights used by the selection method.
     :param tournament_size: The size of the tournament.
     :return: The selected individuals.
     """
-    pop_iqr = get_population_iqr(population, params['FITNESS_FUNCTION'].num_objectives())
-    # If the IQR value is zero, we replace it for 1---which is equivalent to disregard
-    # the normalization process for that objective dimension
-    pop_iqr = [1 if i == 0 else i for i in pop_iqr]
-
     participants = sample(population, tournament_size)
 
     best = None
@@ -375,7 +382,6 @@ def first_pareto_front(population):
             non_dominated_pop.append(population[i])
         else:
             dominated_pop.append(population[i])
-        i += 1
     return non_dominated_pop, dominated_pop
 
 

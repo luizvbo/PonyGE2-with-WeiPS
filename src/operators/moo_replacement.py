@@ -1,7 +1,7 @@
 from random import sample
 
 from algorithm.parameters import params
-from operators.moo_selection import compute_pareto_metrics, weips_selection, first_pareto_front
+from operators.moo_selection import compute_pareto_metrics, weips_selection, first_pareto_front, get_population_iqr
 
 
 def nsga2_replacement(new_pop, old_pop):
@@ -30,10 +30,17 @@ def nsga2_replacement(new_pop, old_pop):
     temp_pop = []
 
     i = 0
+    # The new population is filled with members from the Pareto fronts. The method
+    # iterates from the first front until the last one, adding solutions until the
+    # population is complete.
     while len(temp_pop) < pop_size:
         if len(pareto.fronts[i]) <= pop_size - len(temp_pop):
+            # If the size of the front is smaller or equal to the number of solutions
+            # needed to fulfill the population the method just adds them to the population
             temp_pop.extend(pareto.fronts[i])
         else:
+            # Otherwise, we sort the solutions using the crowded-comparison operator in descending order
+            # and choose the best solutions needed to fill all population slots.
             pareto.fronts[i] = sorted(pareto.fronts[i], key=lambda item: pareto.crowding_distance[item])
             # Number of individuals to add in temp to achieve the pop_size
             diff_size = pop_size - len(temp_pop)
@@ -65,9 +72,12 @@ def weips_replacement(new_pop, old_pop, weight_matrix):
     non_dominated_pop, dominated_pop = first_pareto_front(new_pop)
 
     if len(non_dominated_pop) < pop_size:
-        non_dominated_pop.extend(
-            weips_selection(dominated_pop, weight_matrix,
-                            pop_size - len(non_dominated_pop)))
+        final_pop = non_dominated_pop
+        final_pop.extend(weips_selection(dominated_pop, weight_matrix,
+                                         pop_size - len(non_dominated_pop), False))
     elif len(non_dominated_pop) > pop_size:
-        non_dominated_pop = sample(non_dominated_pop, pop_size)
-    return non_dominated_pop
+        final_pop = weips_selection(non_dominated_pop, weight_matrix,
+                                    pop_size, False)
+    else:
+        final_pop = non_dominated_pop
+    return final_pop
