@@ -207,6 +207,7 @@ def load_params(file_name):
     except FileNotFoundError:
         s = "algorithm.paremeters.load_params\n" \
             "Error: Parameters file not found.\n" \
+            "       " + file_name + "\n" \
             "       Ensure file extension is specified, e.g. 'regression.txt'."
         raise Exception(s)
 
