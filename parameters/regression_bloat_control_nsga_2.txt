@@ -22,7 +22,6 @@ ELITE_SIZE:             0
 
 FITNESS_FUNCTION:       regression_bloat_control
 STATISTICS:             moo_stats
-STEP:                   algorithm.moo_step.nsga2_step
 SEARCH_LOOP:            algorithm.search_loop.search_loop
 SELECTION:              operators.moo_selection.nsga2_selection
 SIGMA_SHARE:            0.48862
