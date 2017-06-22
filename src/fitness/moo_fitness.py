@@ -1,9 +1,7 @@
-from math import isnan, isinf
+from math import isnan
 
 import numpy as np
 import abc
-
-from operators.moo_replacement import first_pareto_front
 
 np.seterr(all="raise")
 
