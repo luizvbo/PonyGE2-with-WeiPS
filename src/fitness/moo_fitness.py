@@ -1,4 +1,4 @@
-from math import isnan
+from math import isnan, isinf
 
 import numpy as np
 import abc
@@ -74,6 +74,8 @@ class MooFitness:
     @staticmethod
     def value(fitness_vector, objective_index):
         if not isinstance(fitness_vector, list):
+            return float("inf")
+        if isnan(fitness_vector[objective_index]):
             return float("inf")
         return fitness_vector[objective_index]
 
