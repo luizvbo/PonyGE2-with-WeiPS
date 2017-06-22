@@ -1,11 +1,12 @@
 from __future__ import division
 
-from math import isnan
+from math import isnan, isinf
 from random import sample, random, randint
 
 from algorithm.parameters import params
 from collections import defaultdict
 from utilities.fitness.math_functions import percentile
+from distutils.sysconfig import _findvar1_rx
 
 ######################################
 # Non-Dominated Sorting   (NSGA-II)  #
@@ -103,9 +104,6 @@ def sort_non_dominated(population):
     """
     pareto = ParetoInfo(population)
 
-    # max_fitness = [float('-inf')] * pareto.n_objectives
-    # min_fitness = [float('inf')] * pareto.n_objectives
-
     # Compute the IQR+1 value used to normalize the crowding distance
     pareto.compute_iqr(population)
 
@@ -161,14 +159,19 @@ def dominates(individual1, individual2):
     """
     not_equal = False
 
-    if not isinstance(individual1.fitness, list):
-        return False
-    if not isinstance(individual2.fitness, list):
-        return True
-    for ind1_value, ind2_value in zip(individual1.fitness, individual2.fitness):
-        if ind1_value > ind2_value:
+#     if not isinstance(individual1.fitness, list):
+#         return False
+#     if not isinstance(individual2.fitness, list):
+#         return True
+    for m in range(params['FITNESS_FUNCTION'].num_objectives()):
+#     for ind1_value, ind2_value in zip(individual1.fitness, individual2.fitness):
+        if params['FITNESS_FUNCTION'].value(
+            individual1.fitness, m) > params['FITNESS_FUNCTION'].value(
+                individual2.fitness, m):
             return False
-        elif ind1_value < ind2_value:
+        elif params['FITNESS_FUNCTION'].value(
+            individual1.fitness, m) < params['FITNESS_FUNCTION'].value(
+                individual2.fitness, m): 
             not_equal = True
     return not_equal
 
@@ -344,11 +347,13 @@ def weips_comparison_operator(individual, other_individual, population_iqr, weig
     :return: *True* if the aggregated fitness of the first individual is smaller than the aggregated fitness of 
     the second individual and *False* otherwise. 
     """
-    # Check for invalid individuals (with nan fitness)
-    if not isinstance(individual.fitness, list):
-        return False
-    if not isinstance(other_individual.fitness, list):
-        return True
+    # Check for invalid individuals (with nan fitness)  
+    for m in range(params['FITNESS_FUNCTION'].num_objectives()):
+        if isinf(params['FITNESS_FUNCTION'].value(individual.fitness, m)):
+            return False
+    for m in range(params['FITNESS_FUNCTION'].num_objectives()):
+        if isinf(params['FITNESS_FUNCTION'].value(other_individual.fitness, m)):
+            return True
 
     n_objectives = len(individual.fitness)
     # If the matrix of weights do not exist, the weights are sampled uniformly
@@ -364,14 +369,14 @@ def weips_comparison_operator(individual, other_individual, population_iqr, weig
     weights = [a / b for a, b in zip(weights, population_iqr)]
     # Compute the fitness induced by the weights for each individual
     
-    individual_f = 0
-    print(str(individual.fitness[0]) + ", " + str(individual.fitness[1]) +
-          " | " + str(weights[0]) + ", " + str(weights[1]))
-    for a, b in zip(individual.fitness, weights):
-        individual_f += a * b    
+#     individual_f = 0
+#     print(str(individual.fitness[0]) + ", " + str(individual.fitness[1]) +
+#           " | " + str(weights[0]) + ", " + str(weights[1]))
+#     for a, b in zip(individual.fitness, weights):
+#         individual_f += a * b    
         
     
-#     individual_f = sum([a * b for a, b in zip(individual.fitness, weights)])
+    individual_f = sum([a * b for a, b in zip(individual.fitness, weights)])
     other_individual_f = sum([a * b for a, b in zip(other_individual.fitness, weights)])
     return individual_f < other_individual_f
 
