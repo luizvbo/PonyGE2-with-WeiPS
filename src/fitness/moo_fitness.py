@@ -71,17 +71,17 @@ class MooFitness:
         """
         return
 
-    @staticmethod
-    def value(fitness_vector, objective_index):
-        if not isinstance(fitness_vector, list):
-            return float("inf")
-        if isnan(fitness_vector[objective_index]):
-            return float("inf")
-        return fitness_vector[objective_index]
-
     @abc.abstractmethod
     def num_objectives(self):
         return
+
+
+def value(fitness_vector, objective_index):
+    if not isinstance(fitness_vector, list):
+        return float("inf")
+    if isnan(fitness_vector[objective_index]):
+        return float("inf")
+    return fitness_vector[objective_index]
 
 
 def binary_phen_to_float(phen, n_codon, min_value, max_value):
