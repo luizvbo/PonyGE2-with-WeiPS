@@ -1,10 +1,5 @@
-from math import isnan
-
 from fitness.regression import regression
 from . import supervised_learning
-
-from algorithm.parameters import params
-from utilities.fitness.error_metric import rmse
 
 
 class regression_bloat_control(regression):
