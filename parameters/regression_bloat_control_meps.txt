@@ -14,7 +14,6 @@ MAX_INIT_TREE_DEPTH:    10
 MAX_TREE_DEPTH:         17
 MUTATION:               int_flip_per_codon
 POPULATION_SIZE:        500
-REPLACEMENT:            generational
 TOURNAMENT_SIZE:        2
 VERBOSE:                False
 SAVE_ALL:               True
@@ -25,5 +24,6 @@ STATISTICS:             moo_stats
 STEP:                   algorithm.moo_step.weips_step
 SEARCH_LOOP:            algorithm.moo_search_loop.meps_search_loop
 SELECTION:              operators.moo_selection.weips_selection
+REPLACEMENT:            operators.moo_replacement.weips_replacement
 WEIPS_LENGTH:           500
 SIGMA_SHARE:            0.48862

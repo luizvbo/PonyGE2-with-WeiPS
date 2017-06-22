@@ -16,5 +16,6 @@ STATISTICS:             moo_stats
 STEP:                   algorithm.moo_step.weips_step
 SEARCH_LOOP:            algorithm.moo_search_loop.stratmeps_search_loop
 SELECTION:              operators.moo_selection.weips_selection
+REPLACEMENT:            operators.moo_replacement.weips_replacement
 WEIPS_LENGTH:           100
 SIGMA_SHARE:            0.48862

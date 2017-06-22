@@ -14,7 +14,6 @@ MAX_INIT_TREE_DEPTH:    10
 MAX_TREE_DEPTH:         17
 MUTATION:               int_flip_per_codon
 POPULATION_SIZE:        500
-REPLACEMENT:            generational
 TOURNAMENT_SIZE:        2
 VERBOSE:                False
 SAVE_ALL:               True
@@ -24,4 +23,5 @@ FITNESS_FUNCTION:       regression_bloat_control
 STATISTICS:             moo_stats
 SEARCH_LOOP:            algorithm.search_loop.search_loop
 SELECTION:              operators.moo_selection.nsga2_selection
+REPLACEMENT:            operators.moo_replacement.nsga2_replacement
 SIGMA_SHARE:            0.48862
