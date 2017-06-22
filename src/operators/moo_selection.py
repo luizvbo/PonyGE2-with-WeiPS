@@ -7,6 +7,7 @@ from algorithm.parameters import params
 from collections import defaultdict
 from utilities.fitness.math_functions import percentile
 from distutils.sysconfig import _findvar1_rx
+from fitness.moo_fitness import value
 
 ######################################
 # Non-Dominated Sorting   (NSGA-II)  #
@@ -165,13 +166,9 @@ def dominates(individual1, individual2):
 #         return True
     for m in range(params['FITNESS_FUNCTION'].num_objectives()):
 #     for ind1_value, ind2_value in zip(individual1.fitness, individual2.fitness):
-        if params['FITNESS_FUNCTION'].value(
-            individual1.fitness, m) > params['FITNESS_FUNCTION'].value(
-                individual2.fitness, m):
+        if value(individual1.fitness, m) > value(individual2.fitness, m):
             return False
-        elif params['FITNESS_FUNCTION'].value(
-            individual1.fitness, m) < params['FITNESS_FUNCTION'].value(
-                individual2.fitness, m): 
+        elif value(individual1.fitness, m) < value(individual2.fitness, m): 
             not_equal = True
     return not_equal
 
@@ -193,19 +190,19 @@ def calculate_crowding_distance(pareto):
                 pareto.crowding_distance[individual] = 0
 
             for m in range(pareto.n_objectives):  # len(front[0].fitness)):
-                front = sorted(front, key=lambda item: params['FITNESS_FUNCTION'].value(item.fitness, m))
+                front = sorted(front, key=lambda item: value(item.fitness, m))
                 pareto.crowding_distance[front[0]] = float("inf")
                 pareto.crowding_distance[front[solutions_num - 1]] = float("inf")
                 for index in range(1, solutions_num - 1):
                     # print(pareto.crowding_distance[front[index]], end=" ")
-                    # print(params['FITNESS_FUNCTION'].value(front[index + 1].fitness, m), end=" ")
-                    # print(params['FITNESS_FUNCTION'].value(front[index - 1].fitness, m), end=" ")
-                    # x = (params['FITNESS_FUNCTION'].value(front[index + 1].fitness, m) -
-                    #      params['FITNESS_FUNCTION'].value(front[index - 1].fitness, m))
+                    # print(value(front[index + 1].fitness, m), end=" ")
+                    # print(value(front[index - 1].fitness, m), end=" ")
+                    # x = (value(front[index + 1].fitness, m) -
+                    #      value(front[index - 1].fitness, m))
                     # print(x, end="\n")
                     pareto.crowding_distance[front[index]] += \
-                        (params['FITNESS_FUNCTION'].value(front[index + 1].fitness, m) -
-                         params['FITNESS_FUNCTION'].value(front[index - 1].fitness, m)) / pareto.fitness_iqr[m]
+                        (value(front[index + 1].fitness, m) -
+                         value(front[index - 1].fitness, m)) / pareto.fitness_iqr[m]
 
 
 class ParetoInfo:
@@ -349,10 +346,10 @@ def weips_comparison_operator(individual, other_individual, population_iqr, weig
     """
     # Check for invalid individuals (with nan fitness)  
     for m in range(params['FITNESS_FUNCTION'].num_objectives()):
-        if isinf(params['FITNESS_FUNCTION'].value(individual.fitness, m)):
+        if isinf(value(individual.fitness, m)):
             return False
     for m in range(params['FITNESS_FUNCTION'].num_objectives()):
-        if isinf(params['FITNESS_FUNCTION'].value(other_individual.fitness, m)):
+        if isinf(value(other_individual.fitness, m)):
             return True
 
     n_objectives = len(individual.fitness)
@@ -408,7 +405,7 @@ def get_population_iqr(population, n_objectives):
     """
     iqr = [0] * n_objectives
     for m in range(n_objectives):
-        sorted_pop = sorted(population, key=lambda ind: params['FITNESS_FUNCTION'].value(ind.fitness, m))
-        iqr[m] = (params['FITNESS_FUNCTION'].value(percentile(sorted_pop, 75).fitness, m) -
-                  params['FITNESS_FUNCTION'].value(percentile(sorted_pop, 25).fitness, m))
+        sorted_pop = sorted(population, key=lambda ind: value(ind.fitness, m))
+        iqr[m] = (value(percentile(sorted_pop, 75).fitness, m) -
+                  value(percentile(sorted_pop, 25).fitness, m))
     return iqr
