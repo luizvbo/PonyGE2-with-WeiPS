@@ -1,8 +1,8 @@
 from fitness.regression import regression
-from . import supervised_learning
+from fitness import moo_fitness
 
 
-class regression_bloat_control(regression):
+class regression_bloat_control(regression, moo_fitness):
     """
     Fitness function for regression using a multiobjective approach
     to control bloat. 
@@ -18,11 +18,11 @@ class regression_bloat_control(regression):
         objective_2 = ind.nodes
         return [objective_1, objective_2]
 
-    @staticmethod
-    def value(fitness_vector, objective_index):
-        if not isinstance(fitness_vector, list):
-            return float("inf")
-        return fitness_vector[objective_index]
+#     @staticmethod
+#     def value(fitness_vector, objective_index):
+#         if not isinstance(fitness_vector, list):
+#             return float("inf")
+#         return fitness_vector[objective_index]
 
     @staticmethod
     def num_objectives():
