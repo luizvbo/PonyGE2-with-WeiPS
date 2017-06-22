@@ -365,7 +365,8 @@ def weips_comparison_operator(individual, other_individual, population_iqr, weig
     # Compute the fitness induced by the weights for each individual
     
     individual_f = 0
-    print(str(individual.fitness[0]) + ", " + str(individual.fitness[1]))
+    print(str(individual.fitness[0]) + ", " + str(individual.fitness[1]) +
+          " | " + str(weights[0]) + ", " + str(weights[1]))
     for a, b in zip(individual.fitness, weights):
         individual_f += a * b    
         
