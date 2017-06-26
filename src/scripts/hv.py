@@ -29,9 +29,12 @@ class HyperVolume:
 
     """
 
-    def __init__(self, front):
+    def __init__(self, front, refence_point=None):
         """Constructor."""
-        self.referencePoint = self.compute_reference_point(front)
+        if refence_point is None:
+            self.reference_point = self.compute_reference_point(front)
+        else:
+            self.reference_point = refence_point
         self.list = []
 
     @staticmethod
@@ -58,7 +61,7 @@ class HyperVolume:
             return True
 
         relevant_points = []
-        reference_point = self.referencePoint
+        reference_point = self.reference_point
         dimensions = len(reference_point)
         for point in front:
             # only consider points that dominate the reference point
@@ -156,7 +159,7 @@ class HyperVolume:
 
     def pre_process(self, front):
         """Sets up the list data structure needed for calculation."""
-        dimensions = len(self.referencePoint)
+        dimensions = len(self.reference_point)
         node_list = MultiList(dimensions)
         nodes = [Node(dimensions, point) for point in front]
         for i in range(dimensions):
