@@ -1,10 +1,12 @@
 import sys
 
 from scripts.moo_plots import plot_pf, mean_std_plot
-from math import sin, pi, sqrt
+from math import sin, pi, sqrt, exp
 from scripts.hv import HyperVolume
 from os.path import os
 from builtins import dict
+from numpy import arange
+from operators.moo_selection import first_pareto_front
 
 sys.path.append("../src")
 
@@ -15,10 +17,13 @@ from os import listdir, path, scandir
 
 from stats.moo_stats import euclidean_distance
 
-input_path = '/home/luiz/Dados/Trabalho/Pesquisa/Publicacoes/2017/MOGP/results/new'
-output_path = '/tmp/stats'
+# input_path = '/home/luiz/Dados/Trabalho/Pesquisa/Publicacoes/2017/MOGP/results/new'
+input_path = '/tmp/temp3'
+# output_path = '/tmp/stats'
+output_path = '/tmp/temp4'
 problems = ["DowNorm", "Keijzer6", "Paige1", "TowerNorm", "Vladislavleva4", 
-            "zdt1", "zdt2", "zdt3", "zdt4", "zdt5", "zdt6"]
+            "zdt1", "zdt2", "zdt3", "zdt4", "zdt5", 
+            "zdt6"]
 
 
 def zdt1(x):
@@ -76,6 +81,7 @@ pf_functions = {'zdt1': zdt1,
                 'zdt6': zdt6
                 }
 
+
 def read_experiment(exp_path, granularity=1):
     """
     Read an experiment, composed of multiple runs.
@@ -91,13 +97,14 @@ def read_experiment(exp_path, granularity=1):
     runs_data = []
     for run_path in run_path_list:
         files = listdir(path.join(exp_path, run_path))
-        number_gen = len([1 for file_name in files if
+        # PonyGE generates one file per generation plus the generation 0
+        number_files = len([1 for file_name in files if
                           re.search('^\d+', file_name) is not None ])
         evolution_info = EvolutionData()
-        generations = list(range(1, number_gen-1, granularity))
+#         generations = list()
         # Ensure the last generation is accounted
-        generations.append(number_gen-1)
-        for i in generations:
+#         generations.append(number_gen-1)
+        for i in range(0, number_files, granularity):
             f = open(path.join(exp_path, run_path, str(i) + ".txt"), 'r')
             training_fitness = None
             test_fitness = None
@@ -119,7 +126,7 @@ def read_experiment(exp_path, granularity=1):
                     elif re.search("itness", line):
                         training_fitness = []
                         data_flag = True
-            if i < number_gen-1:
+            if i < number_files-1:
                 evolution_info.add_tr_fitness(training_fitness)
             else:
                 evolution_info.add_tr_fitness(training_fitness)
@@ -132,26 +139,12 @@ class EvolutionData:
     def __init__(self):
         self.test_fitness = None
         self.training_fitness = []
-        self.min_value = None
-        self.max_value = None
-
-    def add_tr_fitness(self, training_fitness):
-        # Initialize the list of minimum and maximum values
-        if self.min_value is None:
-            self.min_value = [float('inf')] * len(training_fitness)
-        if self.max_value is None:
-            self.max_value = [float('-inf')] * len(training_fitness)
         
+    def add_tr_fitness(self, training_fitness):
         self.training_fitness.append(training_fitness)
         
-        for i in range(len(training_fitness)):    
-            if training_fitness[i] < self.min_value[i]:
-                self.min_value[i] = training_fitness[i]
-            if training_fitness[i] > self.max_value[i]:
-                self.max_value[i] = training_fitness[i]
-        
     def add_ts_fitness(self, test_fitness):
-        self.test_fitness.append(test_fitness)
+        self.test_fitness = test_fitness
 
 
 def list_parser(str_list):
@@ -198,7 +191,47 @@ def hyper_volume(pareto_front, reference_point):
     return hv.compute(pareto_front)
 
 
-def write_stats_in_file(stats_value, output_path):
+def epsilon(solution_front, pareto_front):
+    '''
+    Compute the unary epsilon additive indicator as proposed in [Zitzler2003]_. 
+    The implementation follows the jMetal implementation. 
+    
+    .. [Zitzler2003] Zitzler, E., Thiele, L., Laumanns, M., Fonseca, C. M., 
+       Da Fonseca, V. G. (2003). Performance assessment of multiobjective 
+       optimizers: An analysis and review. IEEE Transactions on evolutionary 
+       computation, 7(2), 117-132.
+    :param solution_front:
+    :param solution_front:
+    '''
+    eps_j = 0.0
+    eps_k = 0.0
+
+    n_objectives = len(pareto_front[0])
+
+    eps = float("-inf")
+
+    for i in range(len(pareto_front)): 
+        for j in range(len(solution_front)):
+            for k in range(n_objectives):
+                eps_temp = solution_front[j][k] - pareto_front[i][k]
+                # We are maximizing eps_temp according to k
+                if k == 0:
+                    eps_k = eps_temp
+                elif eps_k < eps_temp:
+                    eps_k = eps_temp
+            # Maximizing regarding j
+            if j == 0:
+                eps_j = eps_k
+            elif eps_j > eps_k:
+                eps_j = eps_k
+        # Minimize regarding i
+        if i == 0:
+            eps = eps_j;
+        elif eps < eps_j:
+            eps = eps_j
+    return eps
+  
+def write_stats_to_file(stats_value, output_path):
     f = open(output_path, 'w')
     for row in stats_value:
         row_size = len(row)
@@ -218,55 +251,49 @@ def generate_stats():
         
         if 'zdt' in problem:
             fitness_dict = dict()
-            min_value = None 
-            max_value = None
             # Load the experiments' data
             for folder in dir_list:
                 exp_name = os.path.basename(folder)
                 print("Reading experiment " + exp_name)
-                fitness_dict[exp_name] = read_experiment(folder, 1)
-                if min_value is None:
-                    min_value = fitness_dict[exp_name].min_value
-                    max_value = fitness_dict[exp_name].max_value
-                else:
-                    min_value = [min(a,b) for a,b in zip(
-                                 fitness_dict[exp_name].min_value, min_value)]
-                    max_value = [max(a,b) for a,b in zip(
-                                 fitness_dict[exp_name].max_value, max_value)]
+                fitness_dict[exp_name] = read_experiment(folder, 10)
             
             hv_files = []
-            igd_files = []
+            eps_files = []
+            pareto_front = get_pareto_front(problem)
+            
             # Process the statistics from the data 
             for exp_name in fitness_dict.keys():
                 for run in range(len(fitness_dict[exp_name])):
-                    # Plot the Pareto front (orignal data)
-                    plot_pf(fitness_dict[exp_name][run].training_fitness[-1],
-                            pf_functions[problem], 
-                            path.join(output_path, "plot_pf_" + exp_name + "_" + str(run)))
+                    for gen in range(len(fitness_dict[exp_name][run].training_fitness)):
+                        # Plot the Pareto front (original data)
+                        plot_pf(fitness_dict[exp_name][run].training_fitness[gen],
+                                pareto_front, 
+                                path.join(output_path, "plot_pf_" + exp_name + 
+                                          "_" + str(run) + "_" + str(gen) + ".pdf"))
                     # Normalize the data
                     for fit in fitness_dict[exp_name][run].training_fitness:
                         for i in range(len(fit)):
-                            fit[i] = (fit[i] - min_value[i]) / \
-                                     (max_value[i]-min_value[i])
+                            for j in range(len(fit[i])):
+                                fit[i][j] /= ref_point[problem][j]
                 # Compute the normalized metrics
                 print("Computing the HV metric")
                 hv = get_metric_from_exp_data(fitness_dict[exp_name], hyper_volume, [1,1])
-                print("Computing the IGD metric")
-                igd = get_metric_from_exp_data(fitness_dict[exp_name], igd, pf_functions[problem])
+                print("Computing the eps metric")
+                eps = get_metric_from_exp_data(fitness_dict[exp_name], epsilon, pareto_front)
                 print("Writing the results to the file")
                 # Write HV stats
                 stats_path = path.join(output_path, "hv_" + exp_name + ".csv")
                 hv_files.append(stats_path)
-                write_stats_in_file(hv, stats_path)
-                # Write IGD stats
-                stats_path = path.join(output_path, "igd_" + exp_name + ".csv")
-                igd_files.append(stats_path)
-                write_stats_in_file(igd, stats_path)
+                write_stats_to_file(hv, stats_path)
+                # Write epsilon stats
+                stats_path = path.join(output_path, "eps_" + exp_name + ".csv")
+                eps_files.append(stats_path)
+                write_stats_to_file(eps, stats_path)
                 
             mean_std_plot(hv_files, 
-                          path.join(output_path, "plot_hv_" + exp_name + ".pdf"))
-            mean_std_plot(igd_files, 
-                          path.join(output_path, "plot_igd_" + exp_name + ".pdf"))
+                          path.join(output_path, "plot_hv_" + problem + ".pdf"))
+            mean_std_plot(eps_files, 
+                          path.join(output_path, "plot_eps_" + problem + ".pdf"))
             
 #         else:
             # Load the experiments' data
@@ -274,7 +301,38 @@ def generate_stats():
 #                 exp_name = os.path.basename(folder)
 #                 print("Reading experiment " + exp_name)
 #                 exp_fitness = read_experiment(folder, 1)
-                
+
+     
+def get_pareto_front(problem_name):
+    points = []
+    if 'zdt5' in problem_name:
+        x_range = list(range(1, 32))
+    else:
+        x_range = arange(0, 1.001, 0.001)
+    for x in x_range:
+        points.append(pf_functions[problem_name](x))
+    
+    pareto_front = []
+    for i in range(len(points)):
+        non_dominated = True
+        for j in range(len(points)):
+            if i != j and dominates(points[j], points[i]):
+                non_dominated = False
+                break
+        if non_dominated:
+            pareto_front.append(points[i])
+    return pareto_front
+
+
+def dominates(p1, p2):
+    not_equal = False
+    for m in range(len(p1)):
+        if p1[m] > p2[m]:
+            return False
+        elif p1[m] < p2[m]: 
+            not_equal = True
+    return not_equal
+    
 
 def compute_hv():
     """
@@ -291,7 +349,7 @@ def compute_hv():
             print("Computing the  metric")
             hv = get_metric_from_exp_data(exp, hyper_volume, ref_point[i-1])
             print("Writing the results to the file")
-            write_stats_in_file(hv, path.join(output_paht, "hv_" + path.basename(f.path)))
+            write_stats_to_file(hv, path.join(output_paht, "hv_" + path.basename(f.path)))
 
 
 def plot_pareto_fronts():
