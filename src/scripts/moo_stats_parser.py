@@ -4,9 +4,11 @@ from scripts.moo_plots import plot_pf, mean_std_plot
 from math import sin, pi, sqrt, exp
 from scripts.hv import HyperVolume
 from os.path import os
-from builtins import dict
+from builtins import dict, sorted
 from numpy import arange
 from operators.moo_selection import first_pareto_front
+from algorithm.parameters import params
+from multiprocessing import Pool, Queue
 
 sys.path.append("../src")
 
@@ -17,13 +19,10 @@ from os import listdir, path, scandir
 
 from stats.moo_stats import euclidean_distance
 
-# input_path = '/home/luiz/Dados/Trabalho/Pesquisa/Publicacoes/2017/MOGP/results/new'
-input_path = '/tmp/temp3'
-# output_path = '/tmp/stats'
-output_path = '/tmp/temp4'
+input_path = '/home/luiz/Dados/Trabalho/Pesquisa/Publicacoes/2017/MOGP/results/new'
+output_path = '/tmp/stats'
 problems = ["DowNorm", "Keijzer6", "Paige1", "TowerNorm", "Vladislavleva4", 
-            "zdt1", "zdt2", "zdt3", "zdt4", "zdt5", 
-            "zdt6"]
+            "zdt1", "zdt2", "zdt3", "zdt4", "zdt5", "zdt6"]
 
 
 def zdt1(x):
@@ -165,15 +164,40 @@ def list_parser(str_list):
 
 
 def get_metric_from_exp_data(exp_data, metric, *metric_args):
-    metric_value = []
-    for exp in exp_data:
-        gen_value = []
-        training_fitness = exp.training_fitness
-        for pf in training_fitness:
-            gen_value.append(metric(pf, *metric_args))
-        metric_value.append(gen_value)
-    return metric_value
+    '''
+    Compute the value for a given metric given a list of experimental data
+    :param exp_data: Experimental data read with *read_experiment*
+    :param metric: The metric to be computed
+    :param *metric_args: Optional parameters used by the metric 
+    :return: A list with the values of the metric for each experiment
+    '''
+    
+    # Initialise empty list of results.
+    results = []
 
+    # Initialise pool of workers.
+    pool = Pool(processes=params['CORES'])
+    queue = Queue()
+
+    for id in range(len(exp_data)):
+        # Execute a single evolutionary run.
+        results.append(pool.apply_async(compute_metric_from_exp_data, 
+                                        (queue, id, exp_data[id].training_fitness, metric, *metric_args, )))
+        
+    for result in results:
+        result.get()
+        
+    metric_output = sorted([result for result in queue], lambda x : x[0])
+    metric_output = [result[1] for result in metric_output]  
+    return metric_output 
+
+
+def compute_metric_from_exp_data(queue, training_fitness, metric, *metric_args):
+    gen_value = []
+    for pf in training_fitness:
+        gen_value.append(metric(pf, *metric_args))
+    queue.put([id, gen_value])
+    
 
 def uniform_distribution(pareto_front):
     min_distance = [float("inf")] * len(pareto_front)
@@ -264,12 +288,12 @@ def generate_stats():
             # Process the statistics from the data 
             for exp_name in fitness_dict.keys():
                 for run in range(len(fitness_dict[exp_name])):
-                    for gen in range(len(fitness_dict[exp_name][run].training_fitness)):
+#                     for gen in range(len(fitness_dict[exp_name][run].training_fitness)):
                         # Plot the Pareto front (original data)
-                        plot_pf(fitness_dict[exp_name][run].training_fitness[gen],
-                                pareto_front, 
-                                path.join(output_path, "plot_pf_" + exp_name + 
-                                          "_" + str(run) + "_" + str(gen) + ".pdf"))
+#                         plot_pf(fitness_dict[exp_name][run].training_fitness[gen],
+#                                 pareto_front, 
+#                                 path.join(output_path, "plot_pf_" + exp_name + 
+#                                           "_" + str(run) + "_" + str(gen) + ".pdf"))
                     # Normalize the data
                     for fit in fitness_dict[exp_name][run].training_fitness:
                         for i in range(len(fit)):
@@ -296,11 +320,18 @@ def generate_stats():
                           path.join(output_path, "plot_eps_" + problem + ".pdf"))
             
 #         else:
-            # Load the experiments' data
+#             # Load the experiments' 
 #             for folder in dir_list:
 #                 exp_name = os.path.basename(folder)
 #                 print("Reading experiment " + exp_name)
 #                 exp_fitness = read_experiment(folder, 1)
+#                 for run in range(len(exp_fitness)):
+#                     for gen in range(len(exp_fitness[run].training_fitness)):
+#                         # Plot the Pareto front (original data)
+#                         plot_pf(fitness_dict[exp_name][run].training_fitness[gen],
+#                                 pareto_front, 
+#                                 path.join(output_path, "plot_pf_" + exp_name + 
+#                                           "_" + str(run) + "_" + str(gen) + ".pdf"))
 
      
 def get_pareto_front(problem_name):
