@@ -62,11 +62,7 @@ def mean_std_plot(data_path: list, output_path=None):
         pl.savefig(output_path)
 
 
-def plot_pf(approximated_pf, pf_function, output_path=None):
-    if pf_function == zdt_functions['ZDT5']:
-        x_vector = list(range(1, 32))
-    elif pf_function is not None:
-        x_vector = arange(0, 1.01, 0.01)
+def plot_pf(approximated_pf, pareto_front, output_path=None):
     pl.clf()
 
     pl.figure().gca().yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -79,12 +75,11 @@ def plot_pf(approximated_pf, pf_function, output_path=None):
         y_plot.append(sol[1])
     tmp, = pl.plot(x_plot, y_plot, '+', color=colors[0], label="Approximated PF")
     legend_handles = [tmp]
-    if pf_function is not None:
-        points = [pf_function(x) for x in x_vector]
-        points = sorted(points, key=lambda x: x[0])
+    if pareto_front is not None:
+        pareto_front = sorted(pareto_front, key=lambda x: x[0])
         x_plot = []
         y_plot = []
-        for point in points:
+        for point in pareto_front:
             x_plot.append(point[0])
             y_plot.append(point[1])
         tmp, = pl.plot(x_plot, y_plot, 'k', color=colors[0], label="Pareto Front")
