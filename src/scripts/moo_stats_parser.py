@@ -6,9 +6,6 @@ from scripts.hv import HyperVolume
 from os.path import os
 from builtins import dict, sorted
 from numpy import arange
-from operators.moo_selection import first_pareto_front
-from algorithm.parameters import params
-from multiprocessing import Pool, Queue
 
 sys.path.append("../src")
 
@@ -21,8 +18,11 @@ from stats.moo_stats import euclidean_distance
 
 input_path = '/home/luiz/Dados/Trabalho/Pesquisa/Publicacoes/2017/MOGP/results/new'
 output_path = '/tmp/stats'
-problems = ["DowNorm", "Keijzer6", "Paige1", "TowerNorm", "Vladislavleva4", 
-            "zdt1", "zdt2", "zdt3", "zdt4", "zdt5", "zdt6"]
+problems = ["zdt1", "zdt2","zdt3", 
+            "zdt4", "zdt5", "zdt6",
+#             "DowNorm", "Keijzer6", "Paige1", "TowerNorm", "Vladislavleva4"
+           ] 
+            
 
 
 def zdt1(x):
@@ -63,12 +63,20 @@ def zdt6(x):
     return [f1, g * h]
 
 
-ref_point = {'zdt1': [1, 10],
-             'zdt2': [1, 10],
-             'zdt3': [1, 10],
-             'zdt4': [1, 385],
-             'zdt5': [31, 60],
-             'zdt6': [1, 10]
+min_points = {'zdt1': [0, 0],
+             'zdt2': [0, 0],
+             'zdt3': [0, -1],
+             'zdt4': [0, 0],
+             'zdt5': [1, 0],
+             'zdt6': [0, 0]
+             }
+
+max_points = {'zdt1': [1, 10],
+              'zdt2': [1, 10],
+              'zdt3': [1, 10],
+              'zdt4': [1, 385],
+              'zdt5': [31, 60],
+              'zdt6': [1, 10]
              }
 
 
@@ -100,15 +108,19 @@ def read_experiment(exp_path, granularity=1):
         number_files = len([1 for file_name in files if
                           re.search('^\d+', file_name) is not None ])
         evolution_info = EvolutionData()
-#         generations = list()
+        if granularity < 0:
+            generations = [number_files-1]
+        else:
+            generations = list(range(0, number_files, granularity))
         # Ensure the last generation is accounted
 #         generations.append(number_gen-1)
-        for i in range(0, number_files, granularity):
+        for i in generations:
             f = open(path.join(exp_path, run_path, str(i) + ".txt"), 'r')
             training_fitness = None
             test_fitness = None
             data_flag = False
-            for line in f:
+            
+            for line in f:    
                 # In this case we are reading a Pareto front
                 if data_flag:
                     # We found a blank line or other kind of data
@@ -171,32 +183,34 @@ def get_metric_from_exp_data(exp_data, metric, *metric_args):
     :param *metric_args: Optional parameters used by the metric 
     :return: A list with the values of the metric for each experiment
     '''
-    
-    # Initialise empty list of results.
-    results = []
+    metric_value = []
+    for exp in exp_data:
+        gen_value = []
+        training_fitness = exp.training_fitness
+        for pf in training_fitness:
+            gen_value.append(metric(pf, *metric_args))
+        metric_value.append(gen_value)
+    return metric_value
 
-    # Initialise pool of workers.
-    pool = Pool(processes=params['CORES'])
-    queue = Queue()
-
-    for id in range(len(exp_data)):
-        # Execute a single evolutionary run.
-        results.append(pool.apply_async(compute_metric_from_exp_data, 
-                                        (queue, id, exp_data[id].training_fitness, metric, *metric_args, )))
+def get_training_test_stats(exp_data):
+    '''
+    Get the training and test the value for a given metric given a list of experimental data
+    :param exp_data: Experimental data read with *read_experiment* 
+    :return: A list with the values of the metric for each experiment
+    '''
+    tr_error = []
+    ts_error = []
+    size = []
+    for exp in exp_data:
+        tr_fitness = exp.training_fitness[-1]
+        ts_fitness = exp.test_fitness
+        aux_tr_fitness = [x[0] for x in tr_fitness]
+        best_index =  aux_tr_fitness.index(min(aux_tr_fitness))
         
-    for result in results:
-        result.get()
-        
-    metric_output = sorted([result for result in queue], lambda x : x[0])
-    metric_output = [result[1] for result in metric_output]  
-    return metric_output 
-
-
-def compute_metric_from_exp_data(queue, training_fitness, metric, *metric_args):
-    gen_value = []
-    for pf in training_fitness:
-        gen_value.append(metric(pf, *metric_args))
-    queue.put([id, gen_value])
+        size.append([tr_fitness[best_index][1]])
+        tr_error.append([tr_fitness[best_index][0]])
+        ts_error.append([ts_fitness[best_index][0]])
+    return size, tr_error, ts_error
     
 
 def uniform_distribution(pareto_front):
@@ -284,21 +298,24 @@ def generate_stats():
             hv_files = []
             eps_files = []
             pareto_front = get_pareto_front(problem)
+            n_objectives = len(pareto_front[0]) 
+            # The variation (delta) is given by maximum - minimum 
+            delta_pf = [max_points[problem][m] - min_points[problem][m] for m in range(n_objectives)]
             
             # Process the statistics from the data 
             for exp_name in fitness_dict.keys():
                 for run in range(len(fitness_dict[exp_name])):
 #                     for gen in range(len(fitness_dict[exp_name][run].training_fitness)):
-                        # Plot the Pareto front (original data)
+#                         # Plot the Pareto front (original data)
 #                         plot_pf(fitness_dict[exp_name][run].training_fitness[gen],
-#                                 pareto_front, 
+#                                 ['f1', 'f2'], pareto_front, 
 #                                 path.join(output_path, "plot_pf_" + exp_name + 
 #                                           "_" + str(run) + "_" + str(gen) + ".pdf"))
                     # Normalize the data
-                    for fit in fitness_dict[exp_name][run].training_fitness:
-                        for i in range(len(fit)):
-                            for j in range(len(fit[i])):
-                                fit[i][j] /= ref_point[problem][j]
+                    for pf in fitness_dict[exp_name][run].training_fitness:
+                        for sol_id in range(len(pf)):
+                            pf[sol_id] = [(pf[sol_id][m] - min_points[problem][m])/delta_pf[m] 
+                                        for m in range(n_objectives)]
                 # Compute the normalized metrics
                 print("Computing the HV metric")
                 hv = get_metric_from_exp_data(fitness_dict[exp_name], hyper_volume, [1,1])
@@ -319,19 +336,26 @@ def generate_stats():
             mean_std_plot(eps_files, 
                           path.join(output_path, "plot_eps_" + problem + ".pdf"))
             
-#         else:
-#             # Load the experiments' 
-#             for folder in dir_list:
-#                 exp_name = os.path.basename(folder)
-#                 print("Reading experiment " + exp_name)
-#                 exp_fitness = read_experiment(folder, 1)
-#                 for run in range(len(exp_fitness)):
-#                     for gen in range(len(exp_fitness[run].training_fitness)):
-#                         # Plot the Pareto front (original data)
-#                         plot_pf(fitness_dict[exp_name][run].training_fitness[gen],
-#                                 pareto_front, 
-#                                 path.join(output_path, "plot_pf_" + exp_name + 
-#                                           "_" + str(run) + "_" + str(gen) + ".pdf"))
+        else:
+            # Load the experiments' 
+            for folder in dir_list:
+                exp_name = os.path.basename(folder)
+                print("Reading experiment " + exp_name)
+                exp_fitness = read_experiment(folder, 10)
+                for run in range(len(exp_fitness)):
+                    for gen in range(len(exp_fitness[run].training_fitness)):
+                        # Plot the Pareto front (original data)
+                        plot_pf(exp_fitness[run].training_fitness[gen], 
+                                ['Error', 'Size'], None, 
+                                path.join(output_path, "plot_pf_" + exp_name + 
+                                          "_" + str(run) + "_" + str(gen) + ".pdf"))
+                size, tr_fitness, ts_fitness = get_training_test_stats(exp_fitness)
+                stats_path = path.join(output_path, "size_" + exp_name + ".csv")
+                write_stats_to_file(size, stats_path)
+                stats_path = path.join(output_path, "trFit_" + exp_name + ".csv")
+                write_stats_to_file(tr_fitness, stats_path)
+                stats_path = path.join(output_path, "tsFit_" + exp_name + ".csv")
+                write_stats_to_file(ts_fitness, stats_path)
 
      
 def get_pareto_front(problem_name):

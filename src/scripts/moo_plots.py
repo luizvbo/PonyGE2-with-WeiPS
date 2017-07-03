@@ -55,6 +55,7 @@ def mean_std_plot(data_path: list, output_path=None):
                         alpha=0.5, lw=0,
                         facecolor=colors[color_index])
         color_index += 1
+    pl.xlabel(r'Generations ($\times 10$)')
     pl.legend(handles=legend_handles, loc=0)
     if output_path is None:
         pl.show()
@@ -62,7 +63,7 @@ def mean_std_plot(data_path: list, output_path=None):
         pl.savefig(output_path)
 
 
-def plot_pf(approximated_pf, pareto_front, output_path=None):
+def plot_pf(approximated_pf, axis_labels, pareto_front, output_path=None):
     pl.clf()
 
     pl.figure().gca().yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -84,8 +85,9 @@ def plot_pf(approximated_pf, pareto_front, output_path=None):
             y_plot.append(point[1])
         tmp, = pl.plot(x_plot, y_plot, 'k', color=colors[0], label="Pareto Front")
         legend_handles.append(tmp)
-    pl.ylabel("Size")
-    pl.xlabel("Error")
+        
+    pl.xlabel(axis_labels[0])
+    pl.ylabel(axis_labels[1])
 
     pl.legend(handles=legend_handles)
     if output_path is None:
