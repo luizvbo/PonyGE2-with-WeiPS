@@ -1,5 +1,4 @@
 from fitness.regression import regression
-from fitness import moo_fitness
 
 
 class regression_bloat_control(regression):
