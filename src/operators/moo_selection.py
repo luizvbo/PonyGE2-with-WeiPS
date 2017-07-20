@@ -323,7 +323,7 @@ def weips_tournament(population, pop_iqr, weight_matrix, tournament_size):
     :param tournament_size: The size of the tournament.
     :return: The selected individuals.
     """
-    participants = sample(population, tournament_size)
+    participants = sample(population, min(tournament_size, len(population))
 
     best = None
     for participant in participants:
