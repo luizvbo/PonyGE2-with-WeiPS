@@ -41,7 +41,7 @@ def nsga2_replacement(new_pop, old_pop):
         else:
             # Otherwise, we sort the solutions using the crowded-comparison operator in descending order
             # and choose the best solutions needed to fill all population slots.
-            pareto.fronts[i] = sorted(pareto.fronts[i], key=lambda item: pareto.crowding_distance[item])
+            pareto.fronts[i] = sorted(pareto.fronts[i], key=lambda item: pareto.crowding_distance[item], reverse=True)
             # Number of individuals to add in temp to achieve the pop_size
             diff_size = pop_size - len(temp_pop)
             temp_pop.extend(pareto.fronts[i][:diff_size])
